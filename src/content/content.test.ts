@@ -12,6 +12,27 @@ function tryMove(fen: string, uci: string): Chess | null {
   }
 }
 
+/** 手番側が n 手以内に強制詰みできるか(総当たり。n<=2 向け) */
+function forcedMate(fen: string, n: number): boolean {
+  const chess = new Chess(fen);
+  for (const m of chess.moves({ verbose: true })) {
+    chess.move(m);
+    let ok = false;
+    if (chess.isCheckmate()) ok = true;
+    else if (n > 1 && !chess.isGameOver()) {
+      ok = chess.moves().every((r) => {
+        chess.move(r);
+        const res = forcedMate(chess.fen(), n - 1);
+        chess.undo();
+        return res;
+      });
+    }
+    chess.undo();
+    if (ok) return true;
+  }
+  return false;
+}
+
 describe('lesson content', () => {
   it('lesson ids are unique', () => {
     const ids = ALL_LESSONS.map((l) => l.id);
@@ -44,6 +65,20 @@ describe('lesson content', () => {
           it(`step ${i}: practice FEN valid`, () => {
             expect(() => new Chess(step.fen)).not.toThrow();
             expect(step.maxMoves).toBeGreaterThan(0);
+          });
+        } else if (step.type === 'line') {
+          it(`step ${i}: line plays out legally with notes`, () => {
+            const chess = new Chess(step.fen);
+            for (const m of step.moves) {
+              expect(() => chess.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] }), m).not.toThrow();
+            }
+            expect(step.notes.length).toBe(Math.ceil(step.moves.length / 2));
+          });
+        } else if (step.type === 'mate') {
+          it(`step ${i}: mate-in-${step.moves} exists (brute force, up to 2)`, () => {
+            const chess = new Chess(step.fen);
+            expect(chess.isGameOver()).toBe(false);
+            if (step.moves <= 2) expect(forcedMate(step.fen, step.moves)).toBe(true);
           });
         } else if (step.type === 'explain') {
           it(`step ${i}: board FEN valid`, () => {

@@ -10,7 +10,7 @@
 npm install --include=dev   # NODE_ENV=production の環境では --include=dev が必要
 npm run dev                 # 同じ Wi-Fi のスマホから http://<PCのIP>:5173 で開ける
 npm test                    # レッスン内容・パズル判定の検証
-VERIFY_ENGINE=1 npx vitest run src/content/engine-verify.test.ts   # 正解手が最善かを Stockfish で確認(任意)
+VERIFY_ENGINE=1 npx vitest run src/content/engine-verify.test.ts   # 正解手・定跡・詰み手数・練習局面を Stockfish で検証(任意)
 npm run build && npm run preview
 ```
 
@@ -31,5 +31,6 @@ npm run build && npm run preview
 - [x] Phase 3: パズル(Lichess オープンDB から1,464問、レーティング・テーマ別・復習)
 - [ ] Phase 4: 対局後の自動解析・評価グラフ
 - [x] レベル2 のレッスン(9本。CPU相手の詰ませ練習つき)
-- [ ] Phase 5: レベル3〜4 のレッスン
+- [x] レベル3 のレッスン(10本。定跡の手順練習、二手詰め・三手詰め、ポーン構造、ルシェーナ/フィリドール)
+- [ ] Phase 5: レベル4 のレッスン
 - [ ] Phase 6: PWA 化(ホーム画面追加・オフライン)・XP/連続日数

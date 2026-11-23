@@ -39,17 +39,48 @@ export interface QuizStep {
   board?: BoardSpec;
 }
 
-/** CPU(Stockfish)を相手に、最後まで指してチェックメイトを目指す練習 */
+/**
+ * CPU(Stockfish)を相手に、最後まで指す練習。
+ * goal: 'mate' = チェックメイトを目指す(デフォルト) / 'promote' = ポーンを昇格させて勝つ /
+ *       'survive' = maxMoves 手まで守り切る(評価が大きく悪化しなければ成功)
+ */
 export interface PracticeStep {
   type: 'practice';
   text: string;
   fen: string;
-  /** 自分が指せる最大手数(超えたらやり直し) */
+  /** 自分が指せる最大手数(超えたらやり直し/守り切り成功の判定) */
   maxMoves: number;
+  success: string;
+  goal?: 'mate' | 'promote' | 'survive';
+  /** 自分の側(省略時は FEN の手番側)。相手が先に指す場合に指定 */
+  userSide?: 'w' | 'b';
+}
+
+/**
+ * 決まった手順(定跡・罠)を実際に指して覚えるステップ。
+ * moves は UCI で、自分→相手→自分… の順(自分が先に指す)。notes[i] は自分の i 手目の解説。
+ */
+export interface LineStep {
+  type: 'line';
+  text: string;
+  fen: string;
+  orientation?: 'white' | 'black';
+  moves: string[];
+  notes: string[];
   success: string;
 }
 
-export type Step = ExplainStep | MoveStep | QuizStep | PracticeStep;
+/** N手で詰ませる問題。エンジンが「詰みにつながる手か」を判定する */
+export interface MateStep {
+  type: 'mate';
+  text: string;
+  fen: string;
+  /** 何手で詰ませるか(2 = 二手詰め) */
+  moves: number;
+  success: string;
+}
+
+export type Step = ExplainStep | MoveStep | QuizStep | PracticeStep | LineStep | MateStep;
 
 export interface Lesson {
   id: string;

@@ -72,10 +72,29 @@ describe.skipIf(!process.env.VERIFY_ENGINE)('engine verification of lesson answe
     await u.until((l) => l === 'readyok');
     const problems: string[] = [];
     const notes: string[] = [];
-    for (const lesson of ALL_LESSONS.filter((l) => l.id.startsWith(process.env.VERIFY_PREFIX ?? 'lv2'))) {
+    for (const lesson of ALL_LESSONS.filter((l) => new RegExp(process.env.VERIFY_PREFIX ?? '^lv[23]').test(l.id))) {
       for (const [i, step] of lesson.steps.entries()) {
-        if (step.type !== 'move' || step.answers === 'mate') continue;
         const tag = `${lesson.id}#${i}`;
+        if (step.type === 'line') {
+          const chess = new Chess(step.fen);
+          for (const [k, m] of step.moves.entries()) {
+            if (k % 2 === 0) {
+              const top = await evalMoves(u, chess.fen());
+              const r = await evalMoves(u, chess.fen(), [m]);
+              if (r.cp < top.cp - 120) problems.push(`${tag}: line move ${k} ${m} cp=${r.cp} vs best ${top.best} cp=${top.cp}`);
+            }
+            chess.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] });
+          }
+          continue;
+        }
+        if (step.type === 'mate') {
+          const r = await evalMoves(u, step.fen);
+          // 詰みスコア(100000 - 手数)から手数を逆算
+          const mateIn = 100000 - r.cp;
+          if (!(r.cp > 90000 && mateIn <= step.moves)) problems.push(`${tag}: expected mate in ${step.moves}, engine cp=${r.cp}`);
+          continue;
+        }
+        if (step.type !== 'move' || step.answers === 'mate') continue;
         const top = await evalMoves(u, step.fen);
         const legal = new Chess(step.fen).moves({ verbose: true }).map((m) => m.from + m.to + (m.promotion ?? ''));
         for (const a of step.answers) {
@@ -93,25 +112,43 @@ describe.skipIf(!process.env.VERIFY_ENGINE)('engine verification of lesson answe
     expect(problems).toEqual([]);
   }, 600000);
 
-  it('practice positions are mated by best play within maxMoves', async () => {
+  it('practice positions reach their goal within maxMoves under best play', async () => {
     const u = new Uci();
     u.send('uci');
     await u.until((l) => l === 'uciok');
     u.send('isready');
     await u.until((l) => l === 'readyok');
+    const count = (fen: string, p: string) => [...fen.split(' ')[0]].filter((c) => c === p).length;
     for (const lesson of ALL_LESSONS) {
       for (const step of lesson.steps) {
         if (step.type !== 'practice') continue;
+        const goal = step.goal ?? 'mate';
         const chess = new Chess(step.fen);
-        const me = chess.turn();
+        const me = step.userSide ?? chess.turn();
+        const myQ = me === 'w' ? 'Q' : 'q';
+        const q0 = count(step.fen, myQ);
         let mine = 0;
+        let achieved = false;
         while (!chess.isGameOver() && mine <= step.maxMoves) {
           const r = await evalMoves(u, chess.fen());
-          if (chess.turn() === me) mine++;
+          const isMe = chess.turn() === me;
+          if (isMe) mine++;
           chess.move({ from: r.best.slice(0, 2), to: r.best.slice(2, 4), promotion: r.best[4] });
+          if (goal === 'promote' && !isMe && count(chess.fen(), myQ) > q0) {
+            achieved = true;
+            break;
+          }
+          if (goal === 'survive' && !isMe && mine >= step.maxMoves) {
+            const ev = await evalMoves(u, chess.fen());
+            const mineCp = chess.turn() === me ? ev.cp : -ev.cp;
+            achieved = mineCp >= -150;
+            break;
+          }
         }
-        console.log(`${lesson.id}: mate=${chess.isCheckmate()} myMoves=${mine} (max ${step.maxMoves})`);
-        expect(chess.isCheckmate()).toBe(true);
+        if (goal === 'mate') achieved = chess.isCheckmate();
+        if (goal === 'survive' && chess.isDraw()) achieved = true;
+        console.log(`${lesson.id} (${goal}): achieved=${achieved} myMoves=${mine} (max ${step.maxMoves})`);
+        expect(achieved).toBe(true);
         expect(mine).toBeLessThanOrEqual(step.maxMoves);
       }
     }

@@ -1,6 +1,7 @@
 import type { Level, Lesson } from './types';
 import { lv1Lessons } from './lv1';
 import { lv2Lessons } from './lv2';
+import { lv3Lessons } from './lv3';
 
 export const LEVELS: Level[] = [
   {
@@ -22,14 +23,7 @@ export const LEVELS: Level[] = [
     name: 'レベル3:中級',
     eloRange: '1000〜1500',
     description: '戦術の引き出しと基本戦略',
-    lessons: [],
-    planned: [
-      '主要オープニング(イタリアン/ルイロペス/シシリアン)',
-      '二手詰め・三手詰め',
-      'ポーン構造',
-      'ルークエンドゲーム(ルシェーナ/フィリドール)',
-      '守りの技術',
-    ],
+    lessons: lv3Lessons,
   },
   {
     id: 4,
