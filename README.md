@@ -20,6 +20,7 @@ npm run build && npm run preview
 - `src/components/Board.tsx` タップ/ドラッグ対応の盤面(react-chessboard + chess.js)
 - `src/features/lessons/` レッスンプレイヤー(説明・実践・クイズの3種類のステップ)
 - `src/features/play/` CPU 対戦(強さ10段階・コーチ・ヒント・待った)
+- `src/features/analysis/` 対局後の解析(局面ごとにエンジン評価→勝率の落ち幅で ?! / ? / ?? を判定、評価グラフ、手順リスト)
 - `src/features/puzzles/` パズル(出題・判定・レーティング)
 - `tools/build-puzzles.py` Lichess パズルDB(CC0)から `public/puzzles/puzzles.json` を作るスクリプト
 - `src/content/` カリキュラム(コードと分離したデータ。`content.test.ts` で全局面を検証)
@@ -29,7 +30,7 @@ npm run build && npm run preview
 
 - [x] Phase 0〜2: 盤面、CPU 対戦、レベル1レッスン(13本)
 - [x] Phase 3: パズル(Lichess オープンDB から1,464問、レーティング・テーマ別・復習)
-- [ ] Phase 4: 対局後の自動解析・評価グラフ
+- [x] Phase 4: 対局後の自動解析(評価グラフ・悪手の指摘・正確度・対局履歴20局)
 - [x] レベル2 のレッスン(9本。CPU相手の詰ませ練習つき)
 - [x] レベル3 のレッスン(10本。定跡の手順練習、二手詰め・三手詰め、ポーン構造、ルシェーナ/フィリドール)
 - [x] レベル4 のレッスン(11本。局面評価、アウトポスト、K+Pの終盤、ルーク終盤応用、攻撃、計算、名局研究2局)

@@ -3,6 +3,7 @@ import { LessonList } from './features/lessons/LessonList';
 import { LessonPlayer } from './features/lessons/LessonPlayer';
 import { PlayScreen } from './features/play/PlayScreen';
 import { PuzzleScreen } from './features/puzzles/PuzzleScreen';
+import { AnalysisScreen } from './features/analysis/AnalysisScreen';
 import { ALL_LESSONS, findLesson, LEVELS } from './content';
 
 function Home() {
@@ -99,7 +100,7 @@ const TABS: { id: Screen; label: string; icon: string }[] = [
 ];
 
 export default function App() {
-  const { screen, lessonId, setScreen } = useUi();
+  const { screen, lessonId, reviewId, setScreen } = useUi();
   const lesson = lessonId ? findLesson(lessonId) : undefined;
 
   return (
@@ -109,7 +110,7 @@ export default function App() {
         {screen === 'learn' &&
           (lesson ? <LessonPlayer key={lesson.id} lesson={lesson} /> : <LessonList />)}
         {screen === 'puzzle' && <PuzzleScreen />}
-        {screen === 'play' && <PlayScreen />}
+        {screen === 'play' && (reviewId ? <AnalysisScreen /> : <PlayScreen />)}
       </main>
       <nav className="tabbar">
         {TABS.map((t) => (

@@ -145,3 +145,33 @@ main { flex: 1; padding: 12px 14px calc(76px + env(safe-area-inset-bottom)); }
 .tag small { color: var(--muted); }
 .tabbar button { font-size: 0.7rem; }
 .controls.two { grid-template-columns: repeat(2, 1fr); }
+
+/* --- 対局の解析 --- */
+.review-summary .acc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }
+.acc-num { font-size: 1.9rem; font-weight: 800; line-height: 1.1; }
+.acc-num.dim { color: var(--muted); }
+.cnt-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.cnt { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.badge-cls { display: inline-block; min-width: 22px; padding: 0 5px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-align: center; color: #0b0b0b; line-height: 1.5; }
+.badge-cls.cls-blunder { color: #fff; }
+.controls.four { grid-template-columns: repeat(4, 1fr); }
+.detail-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.eval-graph { width: 100%; height: auto; display: block; touch-action: pan-y; cursor: pointer; margin-top: 6px; }
+.eg-bg { fill: #111827; }
+.eg-area { fill: #cbd5e1; opacity: 0.85; }
+.eg-mid { stroke: #383835; stroke-width: 1; stroke-dasharray: 3 3; }
+.eg-line { fill: none; stroke: #f3f4f6; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.eg-mark { stroke: #1f2937; stroke-width: 2; paint-order: stroke; }
+.eg-cursor { stroke: #f3f4f6; stroke-width: 1.5; opacity: 0.9; }
+.eg-dot { fill: #f3f4f6; stroke: #1f2937; stroke-width: 2; }
+.legend-row { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.move-table { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.mt-row { display: grid; grid-template-columns: 34px 1fr 1fr; gap: 4px; align-items: center; }
+.mt-n { color: var(--muted); font-size: 0.8rem; }
+.mt-cell { display: flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid transparent; border-radius: 8px; padding: 8px 10px; text-align: left; min-height: 38px; }
+.mt-cell.sel { border-color: var(--accent); background: #14532d55; }
+.history-row { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.history-row .res { font-weight: 800; min-width: 3.2em; }
+.history-row .res.win { color: var(--accent); }
+.history-row .res.loss { color: #f87171; }
+.history-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }

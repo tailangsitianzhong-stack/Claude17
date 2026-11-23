@@ -1,7 +1,23 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import type { PosEval } from '../features/analysis/logic';
+
 export type Screen = 'home' | 'learn' | 'puzzle' | 'play';
+
+export interface SavedGame {
+  id: string;
+  date: number;
+  level: number;
+  color: 'w' | 'b';
+  result: 'win' | 'draw' | 'loss';
+  /** 指し手(UCI)。標準の初期局面から */
+  moves: string[];
+  /** 解析済みの評価(局面数 = moves.length + 1) */
+  analysis?: PosEval[];
+}
+
+const MAX_GAMES = 20;
 
 interface GameStats {
   played: number;
@@ -29,6 +45,7 @@ interface PersistedState {
   themeStats: Record<string, ThemeStat>;
   seenPuzzles: string[];
   failedPuzzles: string[];
+  games: SavedGame[];
   cpuLevel: number;
   coach: boolean;
   stats: GameStats;
@@ -36,6 +53,9 @@ interface PersistedState {
   setCpuLevel: (n: number) => void;
   setCoach: (b: boolean) => void;
   recordGame: (result: 'win' | 'draw' | 'loss') => void;
+  addGame: (g: SavedGame) => void;
+  setGameAnalysis: (id: string, analysis: PosEval[]) => void;
+  deleteGame: (id: string) => void;
   recordPuzzle: (r: { id: string; themes: string[]; ok: boolean; rating: number }) => void;
   resetProgress: () => void;
 }
@@ -51,6 +71,7 @@ export const useProgress = create<PersistedState>()(
       themeStats: {},
       seenPuzzles: [],
       failedPuzzles: [],
+      games: [],
       cpuLevel: 2,
       coach: true,
       stats: { played: 0, won: 0, drawn: 0, lost: 0 },
@@ -67,6 +88,10 @@ export const useProgress = create<PersistedState>()(
             lost: s.stats.lost + (result === 'loss' ? 1 : 0),
           },
         })),
+      addGame: (g) => set((s) => ({ games: [g, ...s.games.filter((x) => x.id !== g.id)].slice(0, MAX_GAMES) })),
+      setGameAnalysis: (id, analysis) =>
+        set((s) => ({ games: s.games.map((g) => (g.id === id ? { ...g, analysis } : g)) })),
+      deleteGame: (id) => set((s) => ({ games: s.games.filter((g) => g.id !== id) })),
       recordPuzzle: ({ id, themes, ok, rating }) =>
         set((s) => {
           const themeStats = { ...s.themeStats };
@@ -100,6 +125,7 @@ export const useProgress = create<PersistedState>()(
           themeStats: {},
           seenPuzzles: [],
           failedPuzzles: [],
+          games: [],
         }),
     }),
     { name: 'chess-dojo-progress' },
@@ -109,13 +135,18 @@ export const useProgress = create<PersistedState>()(
 interface UiState {
   screen: Screen;
   lessonId: string | null;
+  /** 対局の解析画面で開いている対局 */
+  reviewId: string | null;
   setScreen: (s: Screen) => void;
   openLesson: (id: string | null) => void;
+  openReview: (id: string | null) => void;
 }
 
 export const useUi = create<UiState>()((set) => ({
   screen: 'home',
   lessonId: null,
-  setScreen: (screen) => set({ screen, lessonId: null }),
-  openLesson: (lessonId) => set({ screen: 'learn', lessonId }),
+  reviewId: null,
+  setScreen: (screen) => set({ screen, lessonId: null, reviewId: null }),
+  openLesson: (lessonId) => set({ screen: 'learn', lessonId, reviewId: null }),
+  openReview: (reviewId) => set({ screen: 'play', lessonId: null, reviewId }),
 }));

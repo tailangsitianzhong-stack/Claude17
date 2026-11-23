@@ -3,7 +3,7 @@ import { Chess } from 'chess.js';
 import { Board, type MoveInput } from '../../components/Board';
 import { getEngine, type EngineEval } from '../../engine/stockfish';
 import { CPU_LEVELS, getLevel } from '../../engine/levels';
-import { useProgress } from '../../store/useStore';
+import { useProgress, useUi } from '../../store/useStore';
 
 type Color = 'w' | 'b';
 type Busy = null | 'cpu' | 'coach';
@@ -37,7 +37,9 @@ function sanOf(fen: string, uci: string | undefined | null): string | null {
 }
 
 export function PlayScreen() {
-  const { cpuLevel, coach, setCpuLevel, setCoach, recordGame, stats } = useProgress();
+  const { cpuLevel, coach, setCpuLevel, setCoach, recordGame, stats, games, addGame } = useProgress();
+  const openReview = useUi((s) => s.openReview);
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
   const [colorChoice, setColorChoice] = useState<'w' | 'b' | 'random'>('w');
   const [player, setPlayer] = useState<Color>('w');
@@ -83,6 +85,17 @@ export function PlayScreen() {
     prefetch.current = { fen, promise: engine.analyze(fen, { depth: 12, movetime: 800 }) };
   }, [engine]);
 
+  const saveGame = useCallback(
+    (me: Color, result: 'win' | 'draw' | 'loss') => {
+      const moves = gameRef.current.history({ verbose: true }).map((m) => `${m.from}${m.to}${m.promotion ?? ''}`);
+      if (moves.length === 0) return;
+      const id = `g${Date.now()}`;
+      addGame({ id, date: Date.now(), level: useProgress.getState().cpuLevel, color: me, result, moves });
+      setSavedId(id);
+    },
+    [addGame],
+  );
+
   const finishIfOver = useCallback(
     (me: Color): boolean => {
       const g = gameRef.current;
@@ -100,9 +113,10 @@ export function PlayScreen() {
       else r = { kind: 'draw', text: '50手ルールで引き分けです。' };
       setResult(r);
       recordGame(r.kind);
+      saveGame(me, r.kind);
       return true;
     },
-    [recordGame],
+    [recordGame, saveGame],
   );
 
   const cpuMove = useCallback(
@@ -138,6 +152,7 @@ export function PlayScreen() {
     setHintMove(null);
     setHintsUsed(0);
     setBusy(null);
+    setSavedId(null);
     setStarted(true);
     rerender();
     if (me === 'b') void cpuMove(me, gameId.current);
@@ -242,6 +257,7 @@ export function PlayScreen() {
     const r: Result = { kind: 'loss', text: '投了しました。' };
     setResult(r);
     recordGame('loss');
+    saveGame(player, 'loss');
   }
 
   const movePairs = useMemo(() => {
@@ -309,6 +325,31 @@ export function PlayScreen() {
         <p className="muted small center">
           戦績:{stats.played}戦 {stats.won}勝 {stats.drawn}分 {stats.lost}敗
         </p>
+        {games.length > 0 && (
+          <div className="card">
+            <h3>対局履歴(タップで解析)</h3>
+            <div className="history-list">
+              {games.map((g) => {
+                const d = new Date(g.date);
+                return (
+                  <button key={g.id} className="history-row" onClick={() => openReview(g.id)}>
+                    <span className={`res ${g.result}`}>
+                      {g.result === 'win' ? '勝ち' : g.result === 'loss' ? '負け' : '引分'}
+                    </span>
+                    <span className="small">
+                      {d.getMonth() + 1}/{d.getDate()} {String(d.getHours()).padStart(2, '0')}:
+                      {String(d.getMinutes()).padStart(2, '0')}・{g.color === 'w' ? '白' : '黒'}・Lv{g.level}・
+                      {g.moves.length}手
+                    </span>
+                    <span className="muted small" style={{ marginLeft: 'auto' }}>
+                      {g.analysis ? '解析済' : '未解析'} ›
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -389,23 +430,28 @@ export function PlayScreen() {
         </div>
       )}
 
-      <div className="controls">
-        <button className="btn" onClick={showHint} disabled={!myTurn || !!busy || !!blunder}>
-          💡 ヒント{hintsUsed ? `(${hintsUsed})` : ''}
-        </button>
-        <button className="btn" onClick={undoMove} disabled={!!busy || history.length === 0 || !!blunder}>
-          ↩ 待った
-        </button>
-        {result ? (
-          <button className="btn primary" onClick={() => setStarted(false)}>
+      {result ? (
+        <div className="controls two">
+          <button className="btn primary" onClick={() => savedId && openReview(savedId)} disabled={!savedId}>
+            📊 解析する
+          </button>
+          <button className="btn" onClick={() => setStarted(false)}>
             もう一局
           </button>
-        ) : (
+        </div>
+      ) : (
+        <div className="controls">
+          <button className="btn" onClick={showHint} disabled={!myTurn || !!busy || !!blunder}>
+            💡 ヒント{hintsUsed ? `(${hintsUsed})` : ''}
+          </button>
+          <button className="btn" onClick={undoMove} disabled={!!busy || history.length === 0 || !!blunder}>
+            ↩ 待った
+          </button>
           <button className="btn danger" onClick={resign} disabled={!!blunder}>
             🏳 投了
           </button>
-        )}
-      </div>
+        </div>
+      )}
       {result && (
         <p className="muted small center">
           評価:コーチ{coach ? 'あり' : 'なし'}・ヒント{hintsUsed}回
