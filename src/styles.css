@@ -175,3 +175,26 @@ main { flex: 1; padding: 12px 14px calc(76px + env(safe-area-inset-bottom)); }
 .history-row .res.win { color: var(--accent); }
 .history-row .res.loss { color: #f87171; }
 .history-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+
+/* --- ホームのダッシュボード --- */
+.status-card { display: flex; flex-direction: column; gap: 12px; }
+.st-top { display: flex; justify-content: space-between; align-items: flex-end; }
+.st-streak, .st-level { display: flex; align-items: baseline; gap: 6px; }
+.st-level { flex-direction: column; align-items: flex-end; gap: 0; }
+.st-num { font-size: 1.8rem; font-weight: 800; line-height: 1.1; }
+.flame { font-size: 1.6rem; }
+.st-row { display: flex; flex-direction: column; gap: 4px; }
+.st-label { display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.wk { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.wk-bar { width: 100%; max-width: 26px; height: 46px; background: var(--panel2); border-radius: 6px; display: flex; align-items: flex-end; overflow: hidden; }
+.wk-bar > div { width: 100%; background: #6b7280; border-radius: 4px 4px 0 0; min-height: 0; }
+.wk-bar > div.hit { background: var(--accent); }
+.wk.today span { color: var(--text); font-weight: 700; }
+.badge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
+.bdg { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 10px; background: var(--panel2); opacity: 0.5; }
+.bdg.on { opacity: 1; border: 1px solid #14532d; background: #14532d33; }
+.bdg-icon { font-size: 1.4rem; }
+.bdg-name { font-weight: 700; font-size: 0.9rem; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 40; background: #f3f4f6; color: #111827; padding: 10px 16px; border-radius: 999px; font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,0.4); max-width: 92vw; animation: toast-in 0.25s ease-out; }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }

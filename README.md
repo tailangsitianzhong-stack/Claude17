@@ -14,12 +14,27 @@ VERIFY_ENGINE=1 npx vitest run src/content/engine-verify.test.ts   # 正解手�
 npm run build && npm run preview
 ```
 
+## スマホで使う(ホーム画面に追加・オフライン)
+
+PWA として動きます。ホーム画面に追加すると、アプリのように起動でき、**一度開けばオフラインでも**
+レッスン・パズル・CPU対戦(エンジン含む)が使えます。
+
+ただし Service Worker は **https(または localhost)でないと動きません**。
+LAN 内の `http://<PCのIP>:5173` では通常のWebページとして動くだけです。スマホにインストールしたい場合は、
+`npm run build` で作った `dist/` を、GitHub Pages / Cloudflare Pages / Netlify などの静的ホスティングに置いてください
+(相対パスなので、サブパス配下でも動きます)。
+
+- 進捗・戦績・対局履歴は、そのブラウザの localStorage に保存されます(端末をまたいだ同期はありません)。
+- 更新を配信すると、次回起動時にキャッシュが自動で作り直されます(`sw.js` のビルドIDで管理)。
+
 ## 構成
 
 - `src/engine/` Stockfish 18 (lite, single-thread WASM) を Web Worker で動かすラッパーと CPU レベル定義
 - `src/components/Board.tsx` タップ/ドラッグ対応の盤面(react-chessboard + chess.js)
 - `src/features/lessons/` レッスンプレイヤー(説明・実践・クイズの3種類のステップ)
 - `src/features/play/` CPU 対戦(強さ10段階・コーチ・ヒント・待った)
+- `src/store/progress.ts` XP・ランク・連続日数・バッジの純粋ロジック(テスト付き)
+- `public/sw.js` オフライン用 Service Worker(本体はビルドごと、エンジンとパズルは別キャッシュ)
 - `src/features/analysis/` 対局後の解析(局面ごとにエンジン評価→勝率の落ち幅で ?! / ? / ?? を判定、評価グラフ、手順リスト)
 - `src/features/puzzles/` パズル(出題・判定・レーティング)
 - `tools/build-puzzles.py` Lichess パズルDB(CC0)から `public/puzzles/puzzles.json` を作るスクリプト
@@ -34,4 +49,4 @@ npm run build && npm run preview
 - [x] レベル2 のレッスン(9本。CPU相手の詰ませ練習つき)
 - [x] レベル3 のレッスン(10本。定跡の手順練習、二手詰め・三手詰め、ポーン構造、ルシェーナ/フィリドール)
 - [x] レベル4 のレッスン(11本。局面評価、アウトポスト、K+Pの終盤、ルーク終盤応用、攻撃、計算、名局研究2局)
-- [ ] Phase 6: PWA 化(ホーム画面追加・オフライン)・XP/連続日数
+- [x] Phase 6: PWA 化(ホーム画面追加・オフライン対応)、XP・ランク・連続学習日数・今日の目標・バッジ17種

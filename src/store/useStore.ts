@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type { PosEval } from '../features/analysis/logic';
+import { LEVELS } from '../content';
+import {
+  XP,
+  dateKey,
+  newBadges,
+  nextStreak,
+  pruneActivity,
+  type BadgeContext,
+  type Streak,
+} from './progress';
 
 export type Screen = 'home' | 'learn' | 'puzzle' | 'play';
 
@@ -39,6 +49,14 @@ interface ThemeStat {
 }
 
 interface PersistedState {
+  /** 累計XP・連続学習日数・日別XP・獲得バッジ */
+  xp: number;
+  streak: Streak;
+  activity: Record<string, number>;
+  badges: string[];
+  /** 画面に出す通知(保存しない) */
+  pendingToasts: string[];
+  shiftToast: () => void;
   completedLessons: string[];
   puzzleRating: number;
   puzzleStats: PuzzleStats;
@@ -61,10 +79,63 @@ interface PersistedState {
 }
 
 const EMPTY_PUZZLE_STATS: PuzzleStats = { solved: 0, failed: 0, streak: 0, bestStreak: 0 };
+const EMPTY_STREAK: Streak = { current: 0, best: 0, last: null };
+
+const LEVEL_LESSONS: Record<number, string[]> = Object.fromEntries(
+  LEVELS.map((l) => [l.id, l.lessons.map((x) => x.id)]),
+);
+
+function badgeContext(s: PersistedState): BadgeContext {
+  return {
+    completedLessons: s.completedLessons,
+    puzzleSolved: s.puzzleStats.solved,
+    puzzleRating: s.puzzleRating,
+    gamesWon: s.stats.won,
+    gamesPlayed: s.stats.played,
+    streakBest: s.streak.best,
+    xp: s.xp,
+    analysedGames: s.games.filter((g) => g.analysis).length,
+    levelLessons: LEVEL_LESSONS,
+  };
+}
+
+type Data = Omit<PersistedState, 'shiftToast' | 'completeLesson' | 'setCpuLevel' | 'setCoach' | 'recordGame' | 'addGame' | 'setGameAnalysis' | 'deleteGame' | 'recordPuzzle' | 'resetProgress'>;
+
+/**
+ * 状態の変更(patch)にXPを加え、連続日数・日別XP・バッジ・通知をまとめて更新した patch を返す。
+ * toast を渡すと「+N XP」の通知が出る(バッジ獲得の通知は常に出る)。
+ */
+function withXp(s: PersistedState, patch: Partial<Data>, amount: number, toast?: string): Partial<PersistedState> {
+  const merged: PersistedState = { ...s, ...patch };
+  const today = dateKey();
+  const xp = merged.xp + amount;
+  const streak = nextStreak(merged.streak, today);
+  const activity = pruneActivity({ ...merged.activity, [today]: (merged.activity[today] ?? 0) + amount }, today);
+  const after: PersistedState = { ...merged, xp, streak, activity };
+  const got = newBadges(after.badges, badgeContext(after));
+  const toasts = [
+    ...(toast ? [`+${amount} XP ${toast}`] : []),
+    ...got.map((b) => `${b.icon} バッジ獲得:${b.name}`),
+  ];
+  return {
+    ...patch,
+    xp,
+    streak,
+    activity,
+    badges: [...after.badges, ...got.map((b) => b.id)],
+    pendingToasts: [...s.pendingToasts, ...toasts],
+  };
+}
 
 export const useProgress = create<PersistedState>()(
   persist(
     (set) => ({
+      xp: 0,
+      streak: EMPTY_STREAK,
+      activity: {},
+      badges: [],
+      pendingToasts: [],
+      shiftToast: () => set((s) => ({ pendingToasts: s.pendingToasts.slice(1) })),
       completedLessons: [],
       puzzleRating: 800,
       puzzleStats: EMPTY_PUZZLE_STATS,
@@ -76,21 +147,36 @@ export const useProgress = create<PersistedState>()(
       coach: true,
       stats: { played: 0, won: 0, drawn: 0, lost: 0 },
       completeLesson: (id) =>
-        set((s) => (s.completedLessons.includes(id) ? s : { completedLessons: [...s.completedLessons, id] })),
+        set((s) =>
+          s.completedLessons.includes(id)
+            ? withXp(s, {}, XP.lessonRepeat)
+            : withXp(s, { completedLessons: [...s.completedLessons, id] }, XP.lessonFirst, 'レッスン完了'),
+        ),
       setCpuLevel: (n) => set({ cpuLevel: n }),
       setCoach: (b) => set({ coach: b }),
       recordGame: (result) =>
-        set((s) => ({
-          stats: {
-            played: s.stats.played + 1,
-            won: s.stats.won + (result === 'win' ? 1 : 0),
-            drawn: s.stats.drawn + (result === 'draw' ? 1 : 0),
-            lost: s.stats.lost + (result === 'loss' ? 1 : 0),
-          },
-        })),
+        set((s) =>
+          withXp(
+            s,
+            {
+              stats: {
+                played: s.stats.played + 1,
+                won: s.stats.won + (result === 'win' ? 1 : 0),
+                drawn: s.stats.drawn + (result === 'draw' ? 1 : 0),
+                lost: s.stats.lost + (result === 'loss' ? 1 : 0),
+              },
+            },
+            result === 'win' ? XP.gameWin : result === 'draw' ? XP.gameDraw : XP.gameLoss,
+            result === 'win' ? '対局に勝利' : '対局完了',
+          ),
+        ),
       addGame: (g) => set((s) => ({ games: [g, ...s.games.filter((x) => x.id !== g.id)].slice(0, MAX_GAMES) })),
       setGameAnalysis: (id, analysis) =>
-        set((s) => ({ games: s.games.map((g) => (g.id === id ? { ...g, analysis } : g)) })),
+        set((s) => {
+          const first = !!s.games.find((g) => g.id === id && !g.analysis);
+          const games = s.games.map((g) => (g.id === id ? { ...g, analysis } : g));
+          return first ? withXp(s, { games }, XP.review, '対局を振り返り') : { games };
+        }),
       deleteGame: (id) => set((s) => ({ games: s.games.filter((g) => g.id !== id) })),
       recordPuzzle: ({ id, themes, ok, rating }) =>
         set((s) => {
@@ -103,18 +189,23 @@ export const useProgress = create<PersistedState>()(
           const failedSet = new Set(s.failedPuzzles);
           if (ok) failedSet.delete(id);
           else failedSet.add(id);
-          return {
-            puzzleRating: rating,
-            puzzleStats: {
-              solved: s.puzzleStats.solved + (ok ? 1 : 0),
-              failed: s.puzzleStats.failed + (ok ? 0 : 1),
-              streak,
-              bestStreak: Math.max(s.puzzleStats.bestStreak, streak),
+          return withXp(
+            s,
+            {
+              puzzleRating: rating,
+              puzzleStats: {
+                solved: s.puzzleStats.solved + (ok ? 1 : 0),
+                failed: s.puzzleStats.failed + (ok ? 0 : 1),
+                streak,
+                bestStreak: Math.max(s.puzzleStats.bestStreak, streak),
+              },
+              themeStats,
+              seenPuzzles: [...s.seenPuzzles.filter((x) => x !== id), id].slice(-400),
+              failedPuzzles: [...failedSet].slice(-60),
             },
-            themeStats,
-            seenPuzzles: [...s.seenPuzzles.filter((x) => x !== id), id].slice(-400),
-            failedPuzzles: [...failedSet].slice(-60),
-          };
+            ok ? XP.puzzleOk : XP.puzzleNg,
+            ok ? 'パズル正解' : undefined,
+          );
         }),
       resetProgress: () =>
         set({
@@ -126,9 +217,21 @@ export const useProgress = create<PersistedState>()(
           seenPuzzles: [],
           failedPuzzles: [],
           games: [],
+          xp: 0,
+          streak: EMPTY_STREAK,
+          activity: {},
+          badges: [],
         }),
     }),
-    { name: 'chess-dojo-progress' },
+    {
+      name: 'chess-dojo-progress',
+      // 通知は保存しない
+      partialize: (s) => {
+        const { pendingToasts: _t, ...rest } = s;
+        void _t;
+        return rest;
+      },
+    },
   ),
 );
 

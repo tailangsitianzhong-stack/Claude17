@@ -4,6 +4,9 @@ import { LessonPlayer } from './features/lessons/LessonPlayer';
 import { PlayScreen } from './features/play/PlayScreen';
 import { PuzzleScreen } from './features/puzzles/PuzzleScreen';
 import { AnalysisScreen } from './features/analysis/AnalysisScreen';
+import { BadgesCard, StatusCard } from './features/home/Dashboard';
+import { InstallCard } from './features/home/InstallCard';
+import { Toast } from './components/Toast';
 import { ALL_LESSONS, findLesson, LEVELS } from './content';
 
 function Home() {
@@ -21,6 +24,8 @@ function Home() {
     <div className="page">
       <h1>♞ チェス道場</h1>
       <p className="muted">初心者から上級者まで。学んで、解いて、対戦しよう。</p>
+
+      <StatusCard />
 
       <div className="card hero">
         <h3>つづきから</h3>
@@ -80,6 +85,10 @@ function Home() {
         </ul>
       </div>
 
+      <BadgesCard />
+
+      <InstallCard />
+
       <button
         className="btn ghost small"
         onClick={() => {
@@ -112,6 +121,7 @@ export default function App() {
         {screen === 'puzzle' && <PuzzleScreen />}
         {screen === 'play' && (reviewId ? <AnalysisScreen /> : <PlayScreen />)}
       </main>
+      <Toast />
       <nav className="tabbar">
         {TABS.map((t) => (
           <button key={t.id} className={screen === t.id ? 'active' : ''} onClick={() => setScreen(t.id)}>
