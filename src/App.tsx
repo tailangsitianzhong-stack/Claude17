@@ -2,11 +2,14 @@ import { useProgress, useUi, type Screen } from './store/useStore';
 import { LessonList } from './features/lessons/LessonList';
 import { LessonPlayer } from './features/lessons/LessonPlayer';
 import { PlayScreen } from './features/play/PlayScreen';
+import { PuzzleScreen } from './features/puzzles/PuzzleScreen';
 import { ALL_LESSONS, findLesson, LEVELS } from './content';
 
 function Home() {
   const completed = useProgress((s) => s.completedLessons);
   const stats = useProgress((s) => s.stats);
+  const puzzleRating = useProgress((s) => s.puzzleRating);
+  const puzzleStats = useProgress((s) => s.puzzleStats);
   const resetProgress = useProgress((s) => s.resetProgress);
   const { openLesson, setScreen } = useUi();
   const nextLesson = ALL_LESSONS.find((l) => !completed.includes(l.id));
@@ -38,6 +41,17 @@ function Home() {
         <div className="progress-bar">
           <div style={{ width: `${(lv1Done / lv1.lessons.length) * 100}%` }} />
         </div>
+      </div>
+
+      <div className="card">
+        <h3>パズル</h3>
+        <p className="muted">タダ取り・フォーク・詰みなど、テーマ別の戦術パズル。レーティング付き。</p>
+        <button className="btn wide" onClick={() => setScreen('puzzle')}>
+          パズルを解く
+        </button>
+        <p className="muted small">
+          パズルレーティング {puzzleRating} ・ {puzzleStats.solved}問正解
+        </p>
       </div>
 
       <div className="card">
@@ -80,6 +94,7 @@ function Home() {
 const TABS: { id: Screen; label: string; icon: string }[] = [
   { id: 'home', label: 'ホーム', icon: '🏠' },
   { id: 'learn', label: '学ぶ', icon: '📖' },
+  { id: 'puzzle', label: 'パズル', icon: '🧩' },
   { id: 'play', label: '対戦', icon: '♟' },
 ];
 
@@ -93,6 +108,7 @@ export default function App() {
         {screen === 'home' && <Home />}
         {screen === 'learn' &&
           (lesson ? <LessonPlayer key={lesson.id} lesson={lesson} /> : <LessonList />)}
+        {screen === 'puzzle' && <PuzzleScreen />}
         {screen === 'play' && <PlayScreen />}
       </main>
       <nav className="tabbar">

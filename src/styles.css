@@ -129,3 +129,18 @@ main { flex: 1; padding: 12px 14px calc(76px + env(safe-area-inset-bottom)); }
 
 .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: flex-end; justify-content: center; z-index: 30; padding: 16px; }
 .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px; width: 100%; max-width: 520px; margin-bottom: calc(70px + env(safe-area-inset-bottom)); }
+
+.puzzle-head { display: flex; justify-content: space-between; align-items: flex-end; }
+.rating { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.delta { font-size: 0.9rem; margin-left: 8px; font-weight: 700; }
+.delta.up { color: var(--accent); }
+.delta.down { color: #f87171; }
+.streak { font-size: 1.2rem; font-weight: 700; }
+.theme-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.chip.theme { white-space: nowrap; padding: 8px 12px; font-size: 0.85rem; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.chip.theme small { font-size: 0.65rem; opacity: 0.8; font-weight: 400; }
+.seg button:disabled { opacity: 0.4; }
+.tags { display: flex; flex-direction: column; gap: 8px; }
+.tag { display: flex; flex-direction: column; }
+.tag small { color: var(--muted); }
+.tabbar button { font-size: 0.7rem; }
