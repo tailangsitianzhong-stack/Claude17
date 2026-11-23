@@ -27,6 +27,18 @@ export interface SavedGame {
   analysis?: PosEval[];
 }
 
+/** 進行中(未完了)の対局。指すたびに保存し、あとから再開できる */
+export interface ActiveGame {
+  id: string;
+  /** 開始日時 */
+  date: number;
+  /** 最終保存日時 */
+  updated: number;
+  level: number;
+  color: 'w' | 'b';
+  moves: string[];
+}
+
 const MAX_GAMES = 20;
 
 interface GameStats {
@@ -64,6 +76,8 @@ interface PersistedState {
   seenPuzzles: string[];
   failedPuzzles: string[];
   games: SavedGame[];
+  activeGame: ActiveGame | null;
+  setActiveGame: (g: ActiveGame | null) => void;
   cpuLevel: number;
   coach: boolean;
   stats: GameStats;
@@ -99,7 +113,7 @@ function badgeContext(s: PersistedState): BadgeContext {
   };
 }
 
-type Data = Omit<PersistedState, 'shiftToast' | 'completeLesson' | 'setCpuLevel' | 'setCoach' | 'recordGame' | 'addGame' | 'setGameAnalysis' | 'deleteGame' | 'recordPuzzle' | 'resetProgress'>;
+type Data = Omit<PersistedState, 'setActiveGame' | 'shiftToast' | 'completeLesson' | 'setCpuLevel' | 'setCoach' | 'recordGame' | 'addGame' | 'setGameAnalysis' | 'deleteGame' | 'recordPuzzle' | 'resetProgress'>;
 
 /**
  * 状態の変更(patch)にXPを加え、連続日数・日別XP・バッジ・通知をまとめて更新した patch を返す。
@@ -143,6 +157,8 @@ export const useProgress = create<PersistedState>()(
       seenPuzzles: [],
       failedPuzzles: [],
       games: [],
+      activeGame: null,
+      setActiveGame: (g) => set({ activeGame: g }),
       cpuLevel: 2,
       coach: true,
       stats: { played: 0, won: 0, drawn: 0, lost: 0 },
@@ -217,6 +233,7 @@ export const useProgress = create<PersistedState>()(
           seenPuzzles: [],
           failedPuzzles: [],
           games: [],
+          activeGame: null,
           xp: 0,
           streak: EMPTY_STREAK,
           activity: {},
@@ -243,13 +260,20 @@ interface UiState {
   setScreen: (s: Screen) => void;
   openLesson: (id: string | null) => void;
   openReview: (id: string | null) => void;
+  /** ホームの「続きから」で対戦画面を開き、進行中の対局を自動で再開する */
+  autoResume: boolean;
+  resumeGame: () => void;
+  consumeResume: () => void;
 }
 
 export const useUi = create<UiState>()((set) => ({
   screen: 'home',
   lessonId: null,
   reviewId: null,
-  setScreen: (screen) => set({ screen, lessonId: null, reviewId: null }),
+  autoResume: false,
+  resumeGame: () => set({ screen: 'play', lessonId: null, reviewId: null, autoResume: true }),
+  consumeResume: () => set({ autoResume: false }),
+  setScreen: (screen) => set({ screen, lessonId: null, reviewId: null, autoResume: false }),
   openLesson: (lessonId) => set({ screen: 'learn', lessonId, reviewId: null }),
   openReview: (reviewId) => set({ screen: 'play', lessonId: null, reviewId }),
 }));

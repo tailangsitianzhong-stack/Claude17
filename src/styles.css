@@ -198,3 +198,5 @@ main { flex: 1; padding: 12px 14px calc(76px + env(safe-area-inset-bottom)); }
 .bdg-name { font-weight: 700; font-size: 0.9rem; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 40; background: #f3f4f6; color: #111827; padding: 10px 16px; border-radius: 999px; font-weight: 700; box-shadow: 0 6px 18px rgba(0,0,0,0.4); max-width: 92vw; animation: toast-in 0.25s ease-out; }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+.resume-card { border-color: #f59e0b; background: linear-gradient(135deg, #78350f55, #1f2937); }

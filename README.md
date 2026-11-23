@@ -35,6 +35,7 @@ LAN 内の `http://<PCのIP>:5173` では通常のWebページとして動くだ
 - `src/features/play/` CPU 対戦(強さ10段階・コーチ・ヒント・待った)
 - `src/store/progress.ts` XP・ランク・連続日数・バッジの純粋ロジック(テスト付き)
 - `public/sw.js` オフライン用 Service Worker(本体はビルドごと、エンジンとパズルは別キャッシュ)
+- `src/features/play/active.ts` 進行中の対局の保存・復元(指すたびに localStorage へ保存)
 - `src/features/analysis/` 対局後の解析(局面ごとにエンジン評価→勝率の落ち幅で ?! / ? / ?? を判定、評価グラフ、手順リスト)
 - `src/features/puzzles/` パズル(出題・判定・レーティング)
 - `tools/build-puzzles.py` Lichess パズルDB(CC0)から `public/puzzles/puzzles.json` を作るスクリプト
@@ -49,4 +50,5 @@ LAN 内の `http://<PCのIP>:5173` では通常のWebページとして動くだ
 - [x] レベル2 のレッスン(9本。CPU相手の詰ませ練習つき)
 - [x] レベル3 のレッスン(10本。定跡の手順練習、二手詰め・三手詰め、ポーン構造、ルシェーナ/フィリドール)
 - [x] レベル4 のレッスン(11本。局面評価、アウトポスト、K+Pの終盤、ルーク終盤応用、攻撃、計算、名局研究2局)
+- [x] 対局の途中保存と再開(ブラウザを閉じても続きから)
 - [x] Phase 6: PWA 化(ホーム画面追加・オフライン対応)、XP・ランク・連続学習日数・今日の目標・バッジ17種

@@ -3,7 +3,8 @@ import { Chess } from 'chess.js';
 import { Board, type MoveInput } from '../../components/Board';
 import { getEngine, type EngineEval } from '../../engine/stockfish';
 import { CPU_LEVELS, getLevel } from '../../engine/levels';
-import { useProgress, useUi } from '../../store/useStore';
+import { useProgress, useUi, type ActiveGame } from '../../store/useStore';
+import { movesOf, replayMoves } from './active';
 
 type Color = 'w' | 'b';
 type Busy = null | 'cpu' | 'coach';
@@ -36,9 +37,16 @@ function sanOf(fen: string, uci: string | undefined | null): string | null {
   }
 }
 
+function fmtDate(t: number): string {
+  const d = new Date(t);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function PlayScreen() {
-  const { cpuLevel, coach, setCpuLevel, setCoach, recordGame, stats, games, addGame } = useProgress();
+  const { cpuLevel, coach, setCpuLevel, setCoach, recordGame, stats, games, addGame, activeGame, setActiveGame } =
+    useProgress();
   const openReview = useUi((s) => s.openReview);
+  const consumeResume = useUi((s) => s.consumeResume);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
   const [colorChoice, setColorChoice] = useState<'w' | 'b' | 'random'>('w');
@@ -46,6 +54,10 @@ export function PlayScreen() {
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const gameRef = useRef(new Chess());
+  /** 進行中の対局の識別情報と、自分の色(コールバックから最新値を読むため ref で持つ) */
+  const activeMeta = useRef<{ id: string; date: number }>({ id: '', date: 0 });
+  const playerRef = useRef<Color>('w');
+  const didAutoResume = useRef(false);
   const [, setVersion] = useState(0);
   const rerender = () => setVersion((v) => v + 1);
   const gameId = useRef(0);
@@ -85,6 +97,19 @@ export function PlayScreen() {
     prefetch.current = { fen, promise: engine.analyze(fen, { depth: 12, movetime: 800 }) };
   }, [engine]);
 
+  /** 進行中の対局を保存する(ブラウザを閉じても再開できる) */
+  const persistActive = useCallback(() => {
+    const moves = movesOf(gameRef.current);
+    setActiveGame({
+      id: activeMeta.current.id,
+      date: activeMeta.current.date,
+      updated: Date.now(),
+      level: useProgress.getState().cpuLevel,
+      color: playerRef.current,
+      moves,
+    });
+  }, [setActiveGame]);
+
   const saveGame = useCallback(
     (me: Color, result: 'win' | 'draw' | 'loss') => {
       const moves = gameRef.current.history({ verbose: true }).map((m) => `${m.from}${m.to}${m.promotion ?? ''}`);
@@ -114,9 +139,10 @@ export function PlayScreen() {
       setResult(r);
       recordGame(r.kind);
       saveGame(me, r.kind);
+      setActiveGame(null);
       return true;
     },
-    [recordGame, saveGame],
+    [recordGame, saveGame, setActiveGame],
   );
 
   const cpuMove = useCallback(
@@ -125,7 +151,7 @@ export function PlayScreen() {
       const g = gameRef.current;
       const started = Date.now();
       try {
-        const res = await engine.playMove(g.fen(), level);
+        const res = await engine.playMove(g.fen(), getLevel(useProgress.getState().cpuLevel));
         const wait = Math.max(0, 350 - (Date.now() - started));
         if (wait) await new Promise((r) => setTimeout(r, wait));
         if (id !== gameId.current) return;
@@ -133,18 +159,25 @@ export function PlayScreen() {
           g.move(uciToMove(res.bestMove));
         }
         rerender();
-        if (!finishIfOver(me)) startPrefetch();
+        if (!finishIfOver(me)) {
+          startPrefetch();
+          persistActive();
+        }
       } finally {
         if (id === gameId.current) setBusy(null);
       }
     },
-    [engine, level, finishIfOver, startPrefetch],
+    [engine, finishIfOver, startPrefetch, persistActive],
   );
 
   function newGame() {
+    const old = useProgress.getState().activeGame;
+    if (old && old.moves.length > 0 && !window.confirm('途中の対局があります。破棄して新しい対局を始めますか?')) return;
     gameId.current++;
     const me: Color = colorChoice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : colorChoice;
     gameRef.current = new Chess();
+    playerRef.current = me;
+    activeMeta.current = { id: `a${Date.now()}`, date: Date.now() };
     prefetch.current = null;
     setPlayer(me);
     setResult(null);
@@ -155,9 +188,47 @@ export function PlayScreen() {
     setSavedId(null);
     setStarted(true);
     rerender();
+    persistActive();
     if (me === 'b') void cpuMove(me, gameId.current);
     else startPrefetch();
   }
+
+  /** 保存した対局を復元して続きから指す */
+  function resume(g: ActiveGame) {
+    const chess = replayMoves(g.moves);
+    if (!chess || chess.isGameOver()) {
+      setActiveGame(null);
+      return;
+    }
+    gameId.current++;
+    gameRef.current = chess;
+    playerRef.current = g.color;
+    activeMeta.current = { id: g.id, date: g.date };
+    prefetch.current = null;
+    setCpuLevel(g.level);
+    setPlayer(g.color);
+    setResult(null);
+    setBlunder(null);
+    setHintMove(null);
+    setHintsUsed(0);
+    setBusy(null);
+    setSavedId(null);
+    setStarted(true);
+    rerender();
+    if (chess.turn() !== g.color) void cpuMove(g.color, gameId.current);
+    else startPrefetch();
+  }
+
+  // ホームの「続きから」で来たときは、自動で再開する
+  useEffect(() => {
+    if (didAutoResume.current) return;
+    didAutoResume.current = true;
+    const st = useUi.getState();
+    const saved = useProgress.getState().activeGame;
+    if (st.autoResume && saved) resume(saved);
+    consumeResume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleUserMove(m: MoveInput) {
     const g = gameRef.current;
@@ -199,6 +270,7 @@ export function PlayScreen() {
       }
       if (id !== gameId.current) return;
     }
+    persistActive();
     await cpuMove(player, id);
   }
 
@@ -209,10 +281,12 @@ export function PlayScreen() {
     setHintMove(null);
     rerender();
     startPrefetch();
+    persistActive();
   }
 
   function keepBlunder() {
     setBlunder(null);
+    persistActive();
     void cpuMove(player, gameId.current);
   }
 
@@ -226,6 +300,7 @@ export function PlayScreen() {
     setHintMove(null);
     setBlunder(null);
     rerender();
+    persistActive();
     if (g.turn() === player) startPrefetch();
     else void cpuMove(player, gameId.current);
   }
@@ -258,6 +333,7 @@ export function PlayScreen() {
     setResult(r);
     recordGame('loss');
     saveGame(player, 'loss');
+    setActiveGame(null);
   }
 
   const movePairs = useMemo(() => {
@@ -276,6 +352,29 @@ export function PlayScreen() {
         {engineState === 'loading' && <p className="muted small">エンジンを読み込み中…</p>}
         {engineState === 'error' && (
           <p className="msg bad">エンジンを読み込めませんでした。ページを再読み込みしてください。</p>
+        )}
+        {activeGame && activeGame.moves.length > 0 && (
+          <div className="card resume-card">
+            <h3>▶ 途中の対局があります</h3>
+            <p className="small">
+              CPU {getLevel(activeGame.level).name}・あなたは{activeGame.color === 'w' ? '白' : '黒'}・{activeGame.moves.length}手
+              <br />
+              <span className="muted">最終保存 {fmtDate(activeGame.updated)}</span>
+            </p>
+            <div className="controls two">
+              <button className="btn primary" onClick={() => resume(activeGame)}>
+                続きから再開
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  if (window.confirm('途中の対局を破棄しますか?')) setActiveGame(null);
+                }}
+              >
+                破棄
+              </button>
+            </div>
+          </div>
         )}
         <div className="card">
           <h3>CPUの強さ</h3>

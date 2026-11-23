@@ -15,7 +15,8 @@ function Home() {
   const puzzleRating = useProgress((s) => s.puzzleRating);
   const puzzleStats = useProgress((s) => s.puzzleStats);
   const resetProgress = useProgress((s) => s.resetProgress);
-  const { openLesson, setScreen } = useUi();
+  const { openLesson, setScreen, resumeGame } = useUi();
+  const activeGame = useProgress((s) => s.activeGame);
   const nextLesson = ALL_LESSONS.find((l) => !completed.includes(l.id));
   const lv1 = LEVELS[0];
   const lv1Done = lv1.lessons.filter((l) => completed.includes(l.id)).length;
@@ -26,6 +27,18 @@ function Home() {
       <p className="muted">初心者から上級者まで。学んで、解いて、対戦しよう。</p>
 
       <StatusCard />
+
+      {activeGame && activeGame.moves.length > 0 && (
+        <div className="card resume-card">
+          <h3>▶ 対局の続き</h3>
+          <p className="small">
+            CPU レベル{activeGame.level}・あなたは{activeGame.color === 'w' ? '白' : '黒'}・{activeGame.moves.length}手まで
+          </p>
+          <button className="btn primary wide" onClick={resumeGame}>
+            対局を再開する
+          </button>
+        </div>
+      )}
 
       <div className="card hero">
         <h3>つづきから</h3>
