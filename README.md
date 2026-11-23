@@ -24,6 +24,13 @@ LAN 内の `http://<PCのIP>:5173` では通常のWebページとして動くだ
 `npm run build` で作った `dist/` を、GitHub Pages / Cloudflare Pages / Netlify などの静的ホスティングに置いてください
 (相対パスなので、サブパス配下でも動きます)。
 
+### GitHub Pages で公開する
+
+`.github/workflows/deploy.yml` が、`main` への反映のたびにテスト・ビルドして Pages に公開します。
+**初回だけ**、リポジトリの Settings → Pages → Build and deployment → **Source を「GitHub Actions」**に変更してください
+(「Deploy from a branch」のままだと、ビルド前のソースがそのまま配信されて画面が空になります)。
+公開URLは `https://<ユーザー名>.github.io/<リポジトリ名>/` です。
+
 - 進捗・戦績・対局履歴は、そのブラウザの localStorage に保存されます(端末をまたいだ同期はありません)。
 - 更新を配信すると、次回起動時にキャッシュが自動で作り直されます(`sw.js` のビルドIDで管理)。
 
