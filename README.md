@@ -9,7 +9,8 @@
 ```bash
 npm install --include=dev   # NODE_ENV=production の環境では --include=dev が必要
 npm run dev                 # 同じ Wi-Fi のスマホから http://<PCのIP>:5173 で開ける
-npm test                    # レッスン内容(FEN・正解手)の検証
+npm test                    # レッスン内容・パズル判定の検証
+VERIFY_ENGINE=1 npx vitest run src/content/engine-verify.test.ts   # 正解手が最善かを Stockfish で確認(任意)
 npm run build && npm run preview
 ```
 
@@ -19,13 +20,16 @@ npm run build && npm run preview
 - `src/components/Board.tsx` タップ/ドラッグ対応の盤面(react-chessboard + chess.js)
 - `src/features/lessons/` レッスンプレイヤー(説明・実践・クイズの3種類のステップ)
 - `src/features/play/` CPU 対戦(強さ10段階・コーチ・ヒント・待った)
+- `src/features/puzzles/` パズル(出題・判定・レーティング)
+- `tools/build-puzzles.py` Lichess パズルDB(CC0)から `public/puzzles/puzzles.json` を作るスクリプト
 - `src/content/` カリキュラム(コードと分離したデータ。`content.test.ts` で全局面を検証)
 - `public/stockfish/` エンジン本体(GPLv3。個人利用のみ想定)
 
 ## ロードマップ
 
 - [x] Phase 0〜2: 盤面、CPU 対戦、レベル1レッスン(13本)
-- [ ] Phase 3: パズル(Lichess オープンDB から抜粋)
+- [x] Phase 3: パズル(Lichess オープンDB から1,464問、レーティング・テーマ別・復習)
 - [ ] Phase 4: 対局後の自動解析・評価グラフ
-- [ ] Phase 5: レベル2〜4 のレッスン
+- [x] レベル2 のレッスン(9本。CPU相手の詰ませ練習つき)
+- [ ] Phase 5: レベル3〜4 のレッスン
 - [ ] Phase 6: PWA 化(ホーム画面追加・オフライン)・XP/連続日数

@@ -144,3 +144,4 @@ main { flex: 1; padding: 12px 14px calc(76px + env(safe-area-inset-bottom)); }
 .tag { display: flex; flex-direction: column; }
 .tag small { color: var(--muted); }
 .tabbar button { font-size: 0.7rem; }
+.controls.two { grid-template-columns: repeat(2, 1fr); }

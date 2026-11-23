@@ -1,5 +1,6 @@
 import type { Level, Lesson } from './types';
 import { lv1Lessons } from './lv1';
+import { lv2Lessons } from './lv2';
 
 export const LEVELS: Level[] = [
   {
@@ -14,17 +15,7 @@ export const LEVELS: Level[] = [
     name: 'レベル2:初級',
     eloRange: '600〜1000',
     description: 'タダで駒を取られない・取る力をつけよう',
-    lessons: [],
-    planned: [
-      'オープニングの3原則(中央・展開・キャスリング)',
-      'クイーン+キングでチェックメイト',
-      'ルーク+キングでチェックメイト',
-      '一手詰め',
-      'フォーク',
-      'ピン・スキュア',
-      'ディスカバードアタック',
-      '「取られる駒」を見落とさない',
-    ],
+    lessons: lv2Lessons,
   },
   {
     id: 3,

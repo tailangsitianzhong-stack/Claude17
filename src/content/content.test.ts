@@ -40,6 +40,11 @@ describe('lesson content', () => {
             if (step.hint) expect(tryMove(step.fen, step.hint)).not.toBeNull();
             for (const g of step.goals ?? []) expect(g).toMatch(/^[a-h][1-8]$/);
           });
+        } else if (step.type === 'practice') {
+          it(`step ${i}: practice FEN valid`, () => {
+            expect(() => new Chess(step.fen)).not.toThrow();
+            expect(step.maxMoves).toBeGreaterThan(0);
+          });
         } else if (step.type === 'explain') {
           it(`step ${i}: board FEN valid`, () => {
             if (step.board) {

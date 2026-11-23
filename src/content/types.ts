@@ -39,7 +39,17 @@ export interface QuizStep {
   board?: BoardSpec;
 }
 
-export type Step = ExplainStep | MoveStep | QuizStep;
+/** CPU(Stockfish)を相手に、最後まで指してチェックメイトを目指す練習 */
+export interface PracticeStep {
+  type: 'practice';
+  text: string;
+  fen: string;
+  /** 自分が指せる最大手数(超えたらやり直し) */
+  maxMoves: number;
+  success: string;
+}
+
+export type Step = ExplainStep | MoveStep | QuizStep | PracticeStep;
 
 export interface Lesson {
   id: string;

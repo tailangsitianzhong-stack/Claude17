@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { Board, type MoveInput } from '../../components/Board';
-import type { BoardSpec, Lesson, MoveStep, QuizStep, Step } from '../../content/types';
+import type { BoardSpec, Lesson, MoveStep, PracticeStep, QuizStep, Step } from '../../content/types';
+import { getEngine } from '../../engine/stockfish';
+import type { CpuLevel } from '../../engine/levels';
 import { ALL_LESSONS } from '../../content';
 import { useProgress, useUi } from '../../store/useStore';
 
@@ -28,6 +30,10 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const [done, setDone] = useState(false);
   const completeLesson = useProgress((s) => s.completeLesson);
   const openLesson = useUi((s) => s.openLesson);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [idx, done]);
 
   const total = lesson.steps.length;
   const step = lesson.steps[idx];
@@ -85,6 +91,7 @@ export function LessonPlayer({ lesson }: { lesson: Lesson }) {
 function StepView({ step, onNext, isLast }: { step: Step; onNext: () => void; isLast: boolean }) {
   if (step.type === 'explain') return <ExplainView step={step} onNext={onNext} isLast={isLast} />;
   if (step.type === 'quiz') return <QuizView step={step} onNext={onNext} isLast={isLast} />;
+  if (step.type === 'practice') return <PracticeView step={step} onNext={onNext} isLast={isLast} />;
   return <MoveView step={step} onNext={onNext} isLast={isLast} />;
 }
 
@@ -223,6 +230,145 @@ function MoveView({ step, onNext, isLast }: { step: MoveStep; onNext: () => void
         </button>
       ) : (
         <NextButton onNext={onNext} isLast={isLast} />
+      )}
+    </>
+  );
+}
+
+/** 練習用のCPU: 全力だが短時間で返す */
+const PRACTICE_CPU: CpuLevel = { level: 0, name: '練習', description: '', skill: 20, movetime: 250 };
+
+function PracticeView({ step, onNext, isLast }: { step: PracticeStep; onNext: () => void; isLast: boolean }) {
+  const [fen, setFen] = useState(step.fen);
+  const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
+  const [moves, setMoves] = useState(0);
+  const [status, setStatus] = useState<'play' | 'thinking' | 'won' | 'failed'>('play');
+  const [message, setMessage] = useState<string | null>(null);
+  const [hint, setHint] = useState<{ from: string; to: string } | null>(null);
+  const [engineReady, setEngineReady] = useState(false);
+  const alive = useRef(true);
+  const run = useRef(0);
+  const me = new Chess(step.fen).turn();
+
+  useEffect(() => {
+    alive.current = true;
+    getEngine()
+      .init()
+      .then(() => alive.current && setEngineReady(true))
+      .catch(() => alive.current && setMessage('エンジンを読み込めませんでした。'));
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  function reset(msg: string | null = null) {
+    run.current++;
+    setFen(step.fen);
+    setLastMove(null);
+    setMoves(0);
+    setHint(null);
+    setStatus('play');
+    setMessage(msg);
+  }
+
+  async function handleMove(m: MoveInput) {
+    if (status !== 'play') return;
+    const chess = new Chess(fen);
+    try {
+      chess.move({ from: m.from, to: m.to, promotion: m.promotion });
+    } catch {
+      return;
+    }
+    const count = moves + 1;
+    setMoves(count);
+    setFen(chess.fen());
+    setLastMove({ from: m.from, to: m.to });
+    setHint(null);
+    setMessage(null);
+    if (chess.isCheckmate()) {
+      setStatus('won');
+      return;
+    }
+    if (chess.isStalemate()) {
+      setStatus('failed');
+      setMessage('ステイルメイト(引き分け)になってしまいました。相手に動ける手を1つ残しましょう。');
+      return;
+    }
+    if (chess.isDraw()) {
+      setStatus('failed');
+      setMessage('引き分けになってしまいました。もう一度挑戦しましょう。');
+      return;
+    }
+    if (count >= step.maxMoves) {
+      setStatus('failed');
+      setMessage(`${step.maxMoves}手以内に詰ませられませんでした。もう一度挑戦しましょう。`);
+      return;
+    }
+    const id = ++run.current;
+    setStatus('thinking');
+    try {
+      const res = await getEngine().playMove(chess.fen(), PRACTICE_CPU);
+      if (id !== run.current || !alive.current) return;
+      const mv = res.bestMove;
+      chess.move({ from: mv.slice(0, 2), to: mv.slice(2, 4), promotion: mv[4] as 'q' | 'r' | 'b' | 'n' | undefined });
+      setFen(chess.fen());
+      setLastMove({ from: mv.slice(0, 2), to: mv.slice(2, 4) });
+      setStatus('play');
+    } catch {
+      if (id === run.current && alive.current) setStatus('play');
+    }
+  }
+
+  async function showHint() {
+    if (status !== 'play') return;
+    const id = run.current;
+    setStatus('thinking');
+    try {
+      const res = await getEngine().analyze(fen, { depth: 14, movetime: 800 });
+      if (id !== run.current || !alive.current) return;
+      setHint({ from: res.bestMove.slice(0, 2), to: res.bestMove.slice(2, 4) });
+    } finally {
+      if (id === run.current && alive.current) setStatus('play');
+    }
+  }
+
+  return (
+    <>
+      <Board
+        fen={fen}
+        orientation={me === 'w' ? 'white' : 'black'}
+        interactive={status === 'play' && engineReady}
+        onMove={handleMove}
+        lastMove={lastMove}
+        arrows={hint ? [hint] : undefined}
+      />
+      <div className="card">
+        <h3>実戦練習</h3>
+        <p className="pre">{step.text}</p>
+        <p className="muted small">
+          あなたの手数:{moves}/{step.maxMoves}
+        </p>
+        {!engineReady && !message && <p className="muted small">エンジンを読み込み中…</p>}
+        {status === 'thinking' && <p className="muted small">相手が考えています…</p>}
+        {message && <p className="msg bad">❌ {message}</p>}
+        {status === 'won' && <p className="msg good">⭕ {step.success}</p>}
+      </div>
+      {status === 'won' ? (
+        <NextButton onNext={onNext} isLast={isLast} />
+      ) : (
+        <div className="controls two">
+          <button className="btn" onClick={showHint} disabled={status !== 'play' || !engineReady}>
+            💡 ヒント
+          </button>
+          <button className="btn" onClick={() => reset()}>
+            ↺ やり直し
+          </button>
+        </div>
+      )}
+      {status !== 'won' && (
+        <button className="btn ghost" onClick={onNext}>
+          難しければスキップ ›
+        </button>
       )}
     </>
   );
