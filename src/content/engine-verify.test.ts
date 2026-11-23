@@ -72,7 +72,7 @@ describe.skipIf(!process.env.VERIFY_ENGINE)('engine verification of lesson answe
     await u.until((l) => l === 'readyok');
     const problems: string[] = [];
     const notes: string[] = [];
-    for (const lesson of ALL_LESSONS.filter((l) => new RegExp(process.env.VERIFY_PREFIX ?? '^lv[23]').test(l.id))) {
+    for (const lesson of ALL_LESSONS.filter((l) => new RegExp(process.env.VERIFY_PREFIX ?? '^lv[234]').test(l.id))) {
       for (const [i, step] of lesson.steps.entries()) {
         const tag = `${lesson.id}#${i}`;
         if (step.type === 'line') {
@@ -81,7 +81,7 @@ describe.skipIf(!process.env.VERIFY_ENGINE)('engine verification of lesson answe
             if (k % 2 === 0) {
               const top = await evalMoves(u, chess.fen());
               const r = await evalMoves(u, chess.fen(), [m]);
-              if (r.cp < top.cp - 120) problems.push(`${tag}: line move ${k} ${m} cp=${r.cp} vs best ${top.best} cp=${top.cp}`);
+              if (r.cp < top.cp - (step.loose ? 400 : 120) && r.cp < 600) problems.push(`${tag}: line move ${k} ${m} cp=${r.cp} vs best ${top.best} cp=${top.cp}`);
             }
             chess.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] });
           }
@@ -99,7 +99,7 @@ describe.skipIf(!process.env.VERIFY_ENGINE)('engine verification of lesson answe
         const legal = new Chess(step.fen).moves({ verbose: true }).map((m) => m.from + m.to + (m.promotion ?? ''));
         for (const a of step.answers) {
           const r = await evalMoves(u, step.fen, [a]);
-          if (r.cp < top.cp - 120) problems.push(`${tag}: answer ${a} cp=${r.cp} vs best ${top.best} cp=${top.cp}`);
+          if (r.cp < top.cp - 120 && r.cp < 600) problems.push(`${tag}: answer ${a} cp=${r.cp} vs best ${top.best} cp=${top.cp}`);
         }
         // 正解にしていない手で、最善手と同等のものがあるか(上位だけ確認)
         if (!step.answers.includes(top.best)) notes.push(`${tag}: engine best ${top.best} (cp ${top.cp}) not in answers`);

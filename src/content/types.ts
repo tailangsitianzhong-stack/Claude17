@@ -68,6 +68,8 @@ export interface LineStep {
   moves: string[];
   notes: string[];
   success: string;
+  /** 名局など、最善手ではなくても歴史的・教育的に重要な手を含む場合 true(エンジン検証の許容幅を広げる) */
+  loose?: boolean;
 }
 
 /** N手で詰ませる問題。エンジンが「詰みにつながる手か」を判定する */

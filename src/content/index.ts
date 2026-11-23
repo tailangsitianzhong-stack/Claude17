@@ -2,6 +2,7 @@ import type { Level, Lesson } from './types';
 import { lv1Lessons } from './lv1';
 import { lv2Lessons } from './lv2';
 import { lv3Lessons } from './lv3';
+import { lv4Lessons } from './lv4';
 
 export const LEVELS: Level[] = [
   {
@@ -30,14 +31,7 @@ export const LEVELS: Level[] = [
     name: 'レベル4:上級',
     eloRange: '1500〜',
     description: '深い計算とポジショナルプレイ',
-    lessons: [],
-    planned: [
-      'ポジショナルプレイ(弱点・アウトポスト・オープンファイル)',
-      '高度なエンドゲーム',
-      '攻撃の組み立て',
-      '計算力トレーニング',
-      '名局研究',
-    ],
+    lessons: lv4Lessons,
   },
 ];
 
